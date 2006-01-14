@@ -1,7 +1,7 @@
 package HTTP::Server::Simple::Authen;
 
 use strict;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Carp;
 use MIME::Base64;
@@ -11,9 +11,8 @@ sub authenticate {
     my $self = shift;
     my($cgi) = @_;
     if (($ENV{HTTP_AUTHORIZATION} || '') =~ /^Basic (.*?)$/) {
-        my $credential = $1;
-        my($user, $pass) = split /:/, MIME::Base64::decode($1);
-        return $self->authen_handler->authenticate($user || '', $pass || '')
+        my($user, $pass) = split /:/, (MIME::Base64::decode($1) || ':');
+        return $self->authen_handler->authenticate($user, $pass)
             && $self->authorize_user($user);
     }
 
@@ -85,9 +84,9 @@ dialog box. Defaults to 'Authorized area'.
 
 =item needs_authen
 
-Returns true if the request needs authentication. Takes C<$cgi>
-parameter as parameter. Default to return 1 (which means all the
-requests should be authenticated).
+Returns true if the request needs authentication. Takes C<$cgi> as a
+parameter. Default to return 1 (which means all the requests should be
+authenticated).
 
 For example, you can use the following code to authenticate URL under
 C</foo/>.

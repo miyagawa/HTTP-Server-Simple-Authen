@@ -1,4 +1,8 @@
 Revision history for Perl extension HTTP::Server::Simple::Authen
 
+0.02  2006-01-14T21:34:25Z
+        - Fixed a bug that you can't use 0 as username or password
+        - Updated document
+
 0.01  Sat Jan 14 17:15:45 2006
 	- original version
