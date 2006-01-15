@@ -1,5 +1,8 @@
 Revision history for Perl extension HTTP::Server::Simple::Authen
 
+0.04  2006-01-15T05:55:25Z
+        - NEXT is not needed anymore.
+
 0.03  2006-01-15T03:17:31Z
         - Oops, handle_request() is typically subclassed, so prior
           versions are not subject to work.
