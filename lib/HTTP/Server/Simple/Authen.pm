@@ -1,43 +1,42 @@
 package HTTP::Server::Simple::Authen;
 
 use strict;
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Carp;
 use MIME::Base64;
 use NEXT;
 
-sub authenticate {
+sub do_authenticate {
     my $self = shift;
-    my($cgi) = @_;
     if (($ENV{HTTP_AUTHORIZATION} || '') =~ /^Basic (.*?)$/) {
         my($user, $pass) = split /:/, (MIME::Base64::decode($1) || ':');
-        return $self->authen_handler->authenticate($user, $pass)
-            && $self->authorize_user($user);
+        if ($self->authen_handler->authenticate($user, $pass)) {
+            return $user;
+        }
     }
 
     return;
 }
 
-sub needs_authen { 1 }
 sub authen_realm { "Authorized area" }
-sub authorize_user { 1 }
 
 sub authen_handler {
     my $class = ref(shift);
     Carp::croak("You have to override $class\::authen_handler to return Authen::Simple object");
 }
 
-sub handle_request {
+sub authenticate {
     my $self = shift;
-    if ($self->needs_authen(@_) && ! $self->authenticate(@_)) {
+    my $user = $self->do_authenticate();
+    unless (defined $user) {
         my $realm = $self->authen_realm();
         print "HTTP/1.0 401\r\n";
         print qq(WWW-Authenticate: Basic realm="$realm"\r\n\r\n);
         print "Authentication required.";
-    } else {
-        $self->NEXT::handle_request(@_);
+        return;
     }
+    return $user;
 }
 
 1;
@@ -57,6 +56,12 @@ HTTP::Server::Simple::Authen - Authentication plugin for HTTP::Server::Simple
       Authen::Simple::Passwd->new(passwd => '/etc/passwd');
   }
 
+  sub handle_request {
+      my($self, $cgi) = @_;
+      my $user = $self->authenticate or return;
+      ...
+  }
+
   MyServer->new->run();
 
 =head1 DESCRIPTION
@@ -64,6 +69,26 @@ HTTP::Server::Simple::Authen - Authentication plugin for HTTP::Server::Simple
 HTTP::Server::Simple::Authen is an HTTP::Server::Simple plugin to
 allow HTTP authentication. Authentication scheme is pluggable and you
 can use whatever Authentication protocol that Authen::Simple supports.
+
+You can use C<authenticate> method whatever you want to authenticate
+the request. The method returns C<$username> taken from the request if
+the authentication is successful, and C<undef> otherwise. The code in
+L</SYNOPSIS> requires authentication for all the requests and behaves
+just the same as Apache's C<Require valid-user>.
+
+The following code will explain more about conditioning.
+
+  sub handle_request {
+      my($self, $cgi) = @_;
+      if ($cgi->path_info =~ m!/foo/!) {
+          my $user = $self->authenticate;
+          return unless defined($user) && length($user) == 8;
+      }
+      ...
+  }
+
+This means all the requests to URL C</foo/> require to be
+authenticated, and usernames with 8 chars long are authorized.
 
 =head1 METHODS
 
@@ -81,34 +106,6 @@ request (Required).
 
 Returns a string for Authentication realm to be shown in the browser's
 dialog box. Defaults to 'Authorized area'.
-
-=item needs_authen
-
-Returns true if the request needs authentication. Takes C<$cgi> as a
-parameter. Default to return 1 (which means all the requests should be
-authenticated).
-
-For example, you can use the following code to authenticate URL under
-C</foo/>.
-
-  sub needs_authen {
-      my($self, $cgi) = @_;
-      return $cgi->path_info =~ m!/foo/!;
-  }
-
-=item authorize_user
-
-Returns true if you allow authenticated user to access the
-content. Takes username as a parameter. By default it always returns
-true, which means the same thing with Apache's C<Require valid-user>.
-
-The following code means it only authorizes usernames with 8 chars
-long.
-
-  sub authorize_user {
-      my($self, $username) = @_;
-      return length($username) == 8;
-  }
 
 =back
 

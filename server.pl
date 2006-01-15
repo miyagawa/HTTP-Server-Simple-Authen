@@ -10,5 +10,12 @@ sub authen_handler {
     Authen::Simple::Passwd->new(passwd => '/etc/passwd');
 }
 
+sub handle_request {
+    my $self = shift;
+    my $user = $self->authenticate();
+    return unless defined $user;
+    print "Hello World";
+}
+
 MyServer->new->run;
 
